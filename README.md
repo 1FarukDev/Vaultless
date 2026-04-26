@@ -4,6 +4,9 @@ Vaultless is a developer-focused tool that helps teams **find and remove exposed
 
 The app is **stateless** — no Vaultless-owned database. All work is done with your GitHub OAuth token and GitHub's APIs.
 
+[![npm version](https://img.shields.io/npm/v/vaultless)](https://www.npmjs.com/package/vaultless)
+[![license](https://img.shields.io/npm/l/vaultless)](https://github.com/1FarukDev/Vaultless/blob/main/LICENSE)
+
 ---
 
 ## What it detects
@@ -27,6 +30,7 @@ False positives are filtered — lines referencing `process.env`, URL params, ty
 ---
 
 ## Monorepo structure
+
 ---
 
 ## Tech stack
@@ -57,7 +61,7 @@ False positives are filtered — lines referencing `process.env`, URL params, ty
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-username/vaultless.git
+git clone https://github.com/1FarukDev/Vaultless.git
 cd vaultless
 ```
 
@@ -80,7 +84,7 @@ npm install
 4. Copy the **Client ID**
 5. Click **Generate a new client secret** and copy it
 
-> **Important:** Use a classic **OAuth App**, not a GitHub App. GitHub App tokens ignore the `scope` parameter and will not return private repos.
+> **Important:** Always use a classic **OAuth App**, not a GitHub App. GitHub App tokens ignore the `scope` parameter and will not return private repos.
 
 ### 4. Set up environment variables
 
@@ -114,15 +118,15 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Using the web app
 
 ### Step 1 — Connect
-Click **Connect with GitHub** and authorize Vaultless. You will be asked to approve access to your repositories.
+Click **Connect with GitHub** and authorize Vaultless. You will be asked to approve access to your repositories including private ones.
 
 ### Step 2 — Select a repo
-Browse or search your public and private repos. Click a repo card to select it.
+Browse or search your public and private repos. Click a repo card to select it. You can also paste a GitHub URL directly.
 
 ### Step 3 — Scan
 Choose a scan mode:
 - **Quick scan** — scans the current file tree at `HEAD`. Fast, results in seconds.
-- **Deep scan** — walks recent commit history and surfaces secrets introduced in past commits, even if later deleted. Takes longer on large repos.
+- **Deep scan** — walks recent commit history and surfaces secrets introduced in past commits, even if they were later deleted. Takes longer on large repos.
 
 Click **Start Scan** and watch the live progress log.
 
@@ -131,9 +135,9 @@ Review the findings dashboard. Each flagged file shows the line number, secret t
 
 Two actions are available:
 - **Open a PR** — creates a new branch, replaces hardcoded secrets with `process.env.VARIABLE_NAME`, and opens a pull request for review
-- **Fix directly on main** — commits the fix straight to your default branch, no PR needed
+- **Fix directly on main** — commits the fix straight to your default branch with no PR needed
 
-> ⚠️ Cleaning a file does **not** erase the secret from Git history. Always **revoke and rotate** any exposed secret at the provider level immediately (AWS console, OpenAI dashboard, GitHub settings, etc.).
+> ⚠️ Cleaning a file does **not** erase the secret from Git history. Always **revoke and rotate** any exposed secret at the provider level immediately — AWS console, OpenAI dashboard, GitHub settings, etc.
 
 ---
 
@@ -141,26 +145,16 @@ Two actions are available:
 
 The CLI lets you scan and clean any local project folder directly from your terminal — no browser needed.
 
-### Build and link globally
+### Install globally from npm
 
 ```bash
-# build the shared scanner package first
-cd packages/scanner
-npm run build
-
-# then build and link the CLI
-cd ../cli
-npm run build
-npm link
+npm install -g vaultless
 ```
 
 ### Run in any project folder
 
 ```bash
-# go to any project on your machine
-cd ~/your-project
-
-# scan for secrets
+# scan current directory for secrets
 vaultless scan
 
 # scan including local git commit history
@@ -172,7 +166,7 @@ vaultless clean
 # clean and open a GitHub PR with fixes
 vaultless clean --pr
 
-# clean and commit directly to main
+# clean and commit fixes directly to main
 vaultless clean --direct
 ```
 
@@ -193,17 +187,38 @@ $ vaultless scan
   Run `vaultless clean` to fix these issues
 ```
 
-### Publish to npm (when ready)
-
 ```bash
-cd packages/cli
-npm run build
-npm publish
+$ vaultless clean
+
+  Vaultless — Secret Cleaner
+
+  ✓ 1 file cleaned
+
+  src/app/page.tsx
+    L11 — token replaced with process.env
+
+  ⚠ Rotate your secrets immediately — they may still exist in git history
 ```
 
-Then anyone can install it with:
+### CLI flags
+
+| Command | Flag | Description |
+|---------|------|-------------|
+| `scan` | `--deep` | Also scan local git commit history |
+| `clean` | `--pr` | Push a branch and open a GitHub PR with fixes |
+| `clean` | `--direct` | Commit fixes directly to the default branch |
+
+### Build and link locally (for contributors)
+
 ```bash
-npm install -g vaultless
+# build the shared scanner package first
+cd packages/scanner
+npm run build
+
+# then build and link the CLI
+cd ../cli
+npm run build
+npm link
 ```
 
 ---
@@ -308,6 +323,9 @@ Add a `LICENSE` file when you choose one.
 
 ## Links
 
+- [npm package](https://www.npmjs.com/package/vaultless)
+- [GitHub repo](https://github.com/1FarukDev/Vaultless)
+- [Report an issue](https://github.com/1FarukDev/Vaultless/issues)
 - [Next.js](https://nextjs.org/docs)
 - [NextAuth.js](https://next-auth.js.org/)
 - [GitHub REST API](https://docs.github.com/en/rest)
