@@ -26,6 +26,8 @@ export type ScanMeta = {
 };
 
 export type ScanResponse = {
+  owner: string;
+  repo: string;
   results: ScanResult[];
   meta: ScanMeta;
 };

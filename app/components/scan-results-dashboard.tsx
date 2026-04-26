@@ -2,8 +2,11 @@
 
 import type { Finding, ScanMeta, ScanResult } from "@/lib/types/scan";
 import { redactPreview } from "@/lib/redact-preview";
+import { useState } from "react";
 
 export type ScanResultsDashboardProps = {
+  owner: string;
+  repo: string;
   results: ScanResult[];
   meta: ScanMeta;
 };
@@ -28,6 +31,8 @@ function totalSecretCount(results: ScanResult[]): number {
 }
 
 export default function ScanResultsDashboard({
+  owner,
+  repo,
   results,
   meta,
 }: ScanResultsDashboardProps) {
@@ -35,7 +40,31 @@ export default function ScanResultsDashboard({
   const filesAffected = results.length;
   const scanned = meta.scannedFiles ?? 0;
   const modeLabel = meta.mode === "deep" ? "Deep (history)" : "Quick (HEAD)";
+  const [loading, setLoading] = useState(false);
 
+  async function handleClean(files: ScanResult[]) {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/clean", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ owner, repo, results: files }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error ?? "Clean request failed");
+      }
+
+      if (data.prUrl) {
+        window.open(data.prUrl, "_blank");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }
   if (results.length === 0) {
     return (
       <div className="rounded-2xl border border-white/20 bg-[#0a0a0a] p-10 text-center">
@@ -151,10 +180,11 @@ export default function ScanResultsDashboard({
               <div className="mt-4 border-t border-white/10 pt-4">
                 <button
                   type="button"
-                  disabled
-                  className="rounded-lg border border-white/25 px-3 py-1.5 font-mono text-xs text-white/35"
+                  disabled={loading}
+                  onClick={() => handleClean([fileResult])}
+                  className="rounded-lg border border-white/40 px-3 py-1.5 font-mono text-xs text-white transition enabled:hover:border-white disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Clean this file
+                  {loading ? "Working…" : "Clean this file"}
                 </button>
               </div>
             </li>
@@ -172,10 +202,11 @@ export default function ScanResultsDashboard({
         </button>
         <button
           type="button"
-          disabled
-          className="rounded-full border border-white/20 bg-transparent px-5 py-2 font-mono text-xs text-white/35"
+          disabled={loading}
+          onClick={() => handleClean(results)}
+          className="rounded-full border border-white/40 bg-transparent px-5 py-2 font-mono text-xs text-white transition enabled:hover:border-white disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Commit fixes to GitHub
+          {loading ? "Opening PR…" : "Commit fixes to GitHub"}
         </button>
       </div>
     </div>

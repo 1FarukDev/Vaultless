@@ -80,6 +80,8 @@ export default function RepositoryListClient({ repos }: RepositoryListClientProp
       }
 
       setScanReport({
+        owner,
+        repo,
         results: Array.isArray(data.results) ? data.results : [],
         meta: {
           mode: data.meta?.mode === "deep" ? "deep" : "quick",
@@ -188,6 +190,8 @@ export default function RepositoryListClient({ repos }: RepositoryListClientProp
 
       {scanReport && (
         <ScanResultsDashboard
+          owner={scanReport.owner}
+          repo={scanReport.repo}
           results={scanReport.results}
           meta={scanReport.meta}
         />
