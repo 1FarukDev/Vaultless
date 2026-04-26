@@ -15,7 +15,7 @@ const CLI_PACKAGE_URL = "https://www.npmjs.com/package/vaultless";
 const reveal: Variants = {
   initial: { opacity: 0, y: 24 },
   whileInView: { opacity: 1, y: 0 },
-};
+}; 
 
 const revealViewport = { once: true, amount: 0.35 };
 const revealTransition: Transition = {
