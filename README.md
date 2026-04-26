@@ -1,78 +1,66 @@
 # Vaultless
 
-Vaultless is a developer-focused web app that helps teams **find and remove exposed secrets** in GitHub repositories. The product direction is: connect GitHub → scan repos (`.env`, source, configs) → review findings → optionally auto-commit cleaned files — with a **stateless, privacy-minded** posture.
+Vaultless is a developer-focused web app that helps teams **find and reduce exposed secrets** in GitHub repositories: connect with GitHub, **scan** the repo (quick snapshot or recent commit history), review findings in a **results dashboard**, and optionally open a **pull request** that applies heuristic cleanups.
 
-This repository is a **Next.js (App Router)** frontend and GitHub integration shell: landing page, GitHub OAuth via NextAuth, and a **server-rendered list of repositories** (with client-side search and pagination) when the user is signed in.
+The app is **stateless** from a product perspective (no Vaultless-owned database): work is done with the user’s GitHub OAuth token and GitHub’s APIs.
 
-## Features (current)
+## Features
 
-- **Landing page** — minimal black-and-white UI, Framer Motion scroll reveals (`app/components/home-content.tsx`).
-- **GitHub sign-in** — NextAuth + GitHub provider (`app/api/auth/[...nextauth]/route.ts`).
-- **Repository list (authenticated)** — server-side fetch with Octokit using the session access token; search + pagination in the browser (`app/components/repository-list-section.tsx`, `app/components/repository-list-client.tsx`).
-- **Session + access token** — OAuth access token attached to the session for API calls (see `types/next-auth.d.ts`).
+| Area | What it does |
+|------|----------------|
+| **Landing** | Minimal black-and-white marketing page with Framer Motion reveals (`app/components/home-content.tsx`). |
+| **GitHub OAuth** | NextAuth GitHub provider; access token stored on the session for API calls (`app/api/auth/[...nextauth]/route.ts`, `types/next-auth.d.ts`). |
+| **Repository list** | Server-rendered list via Octokit when signed in; client search, pagination, quick/deep scan mode toggle (`repository-list-section.tsx`, `repository-list-client.tsx`). |
+| **Scan** | `POST /api/scan` — **quick** mode: `HEAD` tree + filtered files; **deep** mode: recent commits and changed files. Pattern-based detection in `lib/helpers/scan.ts` with path filtering in `lib/helpers/skip.ts`. |
+| **Results UI** | Dashboard with summary stats, per-file findings, redacted previews (`lib/redact-preview.ts`), and actions (`app/components/scan-results-dashboard.tsx`). |
+| **Clean / PR** | `POST /api/clean` — creates branch from **`main`**, rewrites flagged lines via `lib/helpers/clean.ts`, commits, opens a PR. Can run for all findings or a single file from the dashboard. |
 
-Scanning, reporting, and auto-commit flows are **not** implemented here yet; the **Scan** buttons are placeholders.
+**Not implemented / placeholder:** “Download cleaned files” in the UI; default branch is hard-coded to `main` in the clean route (repos using only `master` need a code or config change).
 
 ## Tech stack
 
-| Area        | Choice |
-|------------|--------|
-| Framework  | Next.js **16** (App Router) |
-| UI         | React **19**, Tailwind CSS **4** |
-| Motion     | Framer Motion |
-| Auth       | NextAuth.js **v4** (`next-auth`) |
-| GitHub API | `@octokit/rest` |
-| Language   | TypeScript |
+| Area | Choice |
+|------|--------|
+| Framework | Next.js **16** (App Router) |
+| UI | React **19**, Tailwind CSS **4** |
+| Motion | Framer Motion |
+| Auth | NextAuth.js **v4** |
+| GitHub | `@octokit/rest` |
+| Language | TypeScript |
 
 ## Prerequisites
 
-- **Node.js** (LTS recommended, e.g. 20+)
-- **npm** (or compatible package manager)
-- A **GitHub OAuth App** (see below) — **not** a GitHub App’s client ID/secret for classic OAuth scope behavior
+- **Node.js** (LTS, e.g. 20+)
+- **npm**
+- A classic **GitHub OAuth App** (not a GitHub App client ID/secret if you need normal `repo` OAuth scopes and private repo listing — see below)
 
-## GitHub OAuth setup (important)
-
-Vaultless expects credentials from a classic **OAuth App**:
+## GitHub OAuth setup
 
 1. GitHub → **Settings** → **Developer settings** → **OAuth Apps** → **New OAuth App**.
-2. **Application name**: e.g. `Vaultless (local)`.
-3. **Homepage URL**: `http://localhost:3000` (or your deployed URL).
-4. **Authorization callback URL**:  
-   `http://localhost:3000/api/auth/callback/github`  
-   (in production, use your real origin, e.g. `https://yourdomain.com/api/auth/callback/github`).
-5. Create the app, then copy **Client ID** and generate a **Client secret**.
+2. **Homepage URL**: `http://localhost:3000` (or production URL).
+3. **Authorization callback URL**: `http://localhost:3000/api/auth/callback/github` (adjust origin for production).
+4. Copy **Client ID** and create a **Client secret**.
 
-### Why OAuth App (not GitHub App) for this codebase
-
-If you use **GitHub App** user tokens (`ghu_…`), GitHub often reports **empty `x-oauth-scopes`**, and **private repository listing** may not work the same way as with a classic OAuth App token that includes the `repo` scope. This project’s comments and `lib/github-oauth-scope.ts` assume a **classic OAuth App**.
-
-### Scopes
-
-Requested scopes are defined in `lib/github-oauth-scope.ts`:
+**OAuth App vs GitHub App:** GitHub App user tokens (`ghu_…`) often show empty `x-oauth-scopes` and behave differently. This project expects a **classic OAuth App**; scopes live in `lib/github-oauth-scope.ts`:
 
 `read:user user:email repo read:org`
 
-- **`repo`** — needed for private repos you can access (and for future commit/scan features).
-- **`read:org`** — helps with org-related visibility where applicable.
+After changing scopes, users should **disconnect and sign in again**.
 
-**Organization private repos** may still require org admins to **approve the OAuth app** and, if the org uses **SAML SSO**, users may need to **authorize the app for SSO**.
-
-After changing scopes or switching OAuth apps, users should **sign out and sign in again** so GitHub issues a new token.
+Org private repos may require org approval and **SAML SSO** authorization for the OAuth app.
 
 ## Environment variables
 
-Create a `.env.local` in the project root (do not commit secrets). Typical variables:
+Create `.env.local` (never commit it):
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `GITHUB_CLIENT_ID` | Yes | OAuth App Client ID |
 | `GITHUB_CLIENT_SECRET` | Yes | OAuth App Client secret |
-| `NEXTAUTH_URL` | Production / some setups | Public origin of the app, e.g. `http://localhost:3000` or `https://yourdomain.com` |
-| `NEXTAUTH_SECRET` | Production | Random secret for signing cookies/JWT (e.g. `openssl rand -base64 32`) |
+| `NEXTAUTH_URL` | Often | App origin, e.g. `http://localhost:3000` |
+| `NEXTAUTH_SECRET` | Production | `openssl rand -base64 32` |
 
-NextAuth v4: set `NEXTAUTH_SECRET` in any shared or deployed environment.
-
-**Never** commit `.env` or `.env.local`. **Never** expose access tokens in API responses or client-side logs.
+Do not return raw tokens from APIs or paste them in issues.
 
 ## Local development
 
@@ -83,70 +71,111 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-### Scripts
-
 ```bash
-npm run lint      # ESLint
-npm run build     # Production build
-npm run start     # Production server (after build)
-npx tsc --noEmit  # Typecheck
+npm run lint       # ESLint
+npm run build      # Production build
+npm run start      # Production server
+npx tsc --noEmit   # Typecheck
 ```
+
+## API overview
+
+### `POST /api/scan`
+
+Body: `{ "owner": string, "repo": string, "mode": "quick" | "deep" }`
+
+Returns:
+
+```json
+{
+  "results": [
+    {
+      "file": "path/to/file.ts",
+      "findings": [{ "line": 11, "type": "token", "preview": "..." }],
+      "commitSha": "optional-in-deep-mode",
+      "commitDate": "optional"
+    }
+  ],
+  "meta": {
+    "mode": "quick",
+    "scannedFiles": 30,
+    "maxFiles": 250,
+    "skippedLargeFilesOverBytes": 200000
+  }
+}
+```
+
+**Quick mode:** tree at `HEAD`, extension/size filters, cap on files scanned, concurrent blob reads.
+
+**Deep mode:** walks recent commits (see limits in `app/api/scan/route.ts`), dedupes by blob, fetches content at commit refs. Does **not** exhaust full git history — it is bounded for performance and rate limits.
+
+### `POST /api/clean`
+
+Body: `{ "owner": string, "repo": string, "results": ScanResult[] }`
+
+Requires `repo` scope (and write access). Creates `vaultless/clean-secrets-<timestamp>` from **`heads/main`**, updates files, opens a PR. Response: `{ "prUrl": "..." }` on success.
+
+### `GET /api/debug` (dev only)
+
+Returns GitHub response metadata / scope headers — **not** the raw token. Remove or protect in production.
 
 ## Project structure
 
 ```
 app/
   api/
-    auth/[...nextauth]/route.ts   # NextAuth handler + exported authOptions
-    debug/route.ts                # Debug helper (does not return raw tokens)
+    auth/[...nextauth]/route.ts   # NextAuth + exported authOptions
+    scan/route.ts                 # Quick / deep scan
+    clean/route.ts                # Branch, patch files, open PR
+    debug/route.ts                # Safe debug metadata
   components/
-    home-content.tsx              # Client: landing UI, sign-in/out
-    repository-list-section.tsx   # Server: session + Octokit fetch
-    repository-list-client.tsx    # Client: search + pagination
-  layout.tsx                      # Root layout, fonts, Providers wrapper
-  page.tsx                        # Server: composes Home + repo section
-  providers.tsx                   # Client: SessionProvider
+    home-content.tsx              # Landing + sign in/out
+    repository-list-section.tsx   # Server: repos via Octokit
+    repository-list-client.tsx    # Search, pagination, scan + dashboard wiring
+    scan-results-dashboard.tsx    # Findings UI + clean actions
+  layout.tsx
+  page.tsx
+  providers.tsx                   # SessionProvider
 lib/
-  github-oauth-scope.ts           # OAuth scope string (single source of truth)
+  types/scan.ts                   # Finding, ScanResult, ScanMeta, ScanResponse
+  github-oauth-scope.ts
+  redact-preview.ts
+  helpers/
+    scan.ts                       # Pattern matching
+    skip.ts                       # Path allow/skip lists
+    clean.ts                      # Rewrite lines → process.env.*
 types/
-  next-auth.d.ts                  # Session/JWT typings (accessToken)
+  next-auth.d.ts                  # Session.accessToken, JWT
 ```
 
-## How auth and repo listing work
+## How the main flows fit together
 
-1. User clicks **Connect with GitHub** → `signIn("github", …)` with `prompt: consent` and explicit `scope` (`app/components/home-content.tsx`).
-2. NextAuth completes OAuth and stores the GitHub **access token** in the JWT, then exposes `session.accessToken` (`app/api/auth/[...nextauth]/route.ts`).
-3. `RepositoryListSection` runs on the server: `getServerSession(authOptions)` → `Octokit({ auth: session.accessToken })` → `repos.listForAuthenticatedUser` with `visibility: "all"`, `affiliation: "owner,collaborator,organization_member"`, sorted by `updated`.
-4. Results are passed to `RepositoryListClient` for filtering and paging.
-
-If the user is not signed in, the repo section returns `null` (nothing below the hero).
-
-## Debugging
-
-`GET /api/debug` returns GitHub API metadata and scope **headers** only — it does **not** return the raw token. Prefer using it in development only; remove or protect it in production.
+1. User signs in with GitHub; `session.accessToken` is available server-side.
+2. Repos load in `RepositoryListSection`; user picks **Quick** or **Deep** and clicks **Scan**.
+3. Client calls `/api/scan` and stores `ScanResponse` (`owner`, `repo`, `results`, `meta`).
+4. `ScanResultsDashboard` shows summaries and redacted previews; **Commit fixes to GitHub** or **Clean this file** calls `/api/clean` with the relevant `results` slice.
 
 ## Contributing
 
-1. Fork the repo and branch (`feat/…`, `fix/…`).
-2. Run **`npm run lint`** and **`npx tsc --noEmit`** before opening a PR.
-3. Keep changes focused; one concern per PR when possible.
-4. **Security** — never log tokens, leak secrets in APIs, or commit env files. Redact tokens in issues and screenshots.
-5. **OAuth / GitHub** — when changing scopes or API usage, update `lib/github-oauth-scope.ts` and this README.
+1. Fork, branch (`feat/…`, `fix/…`).
+2. Run **`npm run lint`** and **`npx tsc --noEmit`** before a PR.
+3. Keep changes focused; avoid leaking secrets in logs or responses.
+4. When changing OAuth scopes or scan/clean behavior, update **`lib/github-oauth-scope.ts`** and this README.
 
-### Ideas for contributions
+### Ideas
 
-- Wire **Scan** to a real scan job or API route.
-- Server-driven pagination over GitHub’s API (`page` / Link headers) beyond the first page of results.
-- Tests (auth mocks, Octokit mocks).
-- Harden or remove `/api/debug` for production.
+- Configurable default branch (or auto-detect repo default) for `/api/clean`.
+- Server-driven repo pagination beyond the first page of `listForAuthenticatedUser`.
+- Stronger clean heuristics / pluggable rules; tests with mocked Octokit.
+- Remove or gate `/api/debug` in production.
 
 ## License
 
-Specify a license in a `LICENSE` file when the project owners choose one.
+Add a `LICENSE` file when you choose one.
 
 ## Links
 
-- [Next.js documentation](https://nextjs.org/docs)
+- [Next.js](https://nextjs.org/docs)
 - [NextAuth.js](https://next-auth.js.org/)
-- [GitHub REST API – Repositories](https://docs.github.com/en/rest/repos/repos)
+- [GitHub REST API](https://docs.github.com/en/rest)
 - [Octokit REST](https://github.com/octokit/rest.js)
