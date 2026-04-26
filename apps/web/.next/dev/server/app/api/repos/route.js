@@ -1,0 +1,12 @@
+var R=require("../../../chunks/[turbopack]_runtime.js")("server/app/api/repos/route.js")
+R.c("server/chunks/apps_web_app_api_repos_route_ts_02ub7oc._.js")
+R.c("server/chunks/node_modules_next_0fug2lq._.js")
+R.c("server/chunks/node_modules_next-auth_11tzhbf._.js")
+R.c("server/chunks/node_modules_openid-client_0681y5w._.js")
+R.c("server/chunks/node_modules_jose_dist_node_cjs_0wmi9~u._.js")
+R.c("server/chunks/node_modules_@octokit_plugin-rest-endpoint-methods_dist-src_02t5sbk._.js")
+R.c("server/chunks/node_modules_0pddwg8._.js")
+R.c("server/chunks/[root-of-the-server]__0943_bi._.js")
+R.c("server/chunks/apps_web__next-internal_server_app_api_repos_route_actions_08hf6lh.js")
+R.m("[project]/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/apps/web/app/api/repos/route.ts [app-route] (ecmascript)\" } [app-route] (ecmascript)")
+module.exports=R.m("[project]/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/apps/web/app/api/repos/route.ts [app-route] (ecmascript)\" } [app-route] (ecmascript)").exports
