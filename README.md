@@ -57,7 +57,7 @@ False positives are filtered — lines referencing `process.env`, URL params, ty
 ### 1. Clone the repo
 
 ```bash
-git clone [https://github.com/your-username/vaultless.git](https://github.com/1FarukDev/Vaultless)
+git clone https://github.com/1FarukDev/vaultless.git
 cd vaultless
 ```
 
