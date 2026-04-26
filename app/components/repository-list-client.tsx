@@ -1,9 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import ScanResultsDashboard from "./scan-results-dashboard";
+import type { ScanResponse } from "@/lib/types/scan";
 
 type Repo = {
   id: number;
+  owner: string;
   name: string;
   description: string | null;
   language: string | null;
@@ -14,6 +17,8 @@ type Repo = {
 type RepositoryListClientProps = {
   repos: Repo[];
 };
+
+type ScanMode = "quick" | "deep";
 
 const PAGE_SIZE = 10;
 
@@ -26,15 +31,13 @@ function formatDate(dateValue: string | null) {
   }).format(new Date(dateValue));
 }
 
-function trimDescription(description: string | null) {
-  if (!description) return "No description";
-  if (description.length <= 120) return description;
-  return `${description.slice(0, 117)}...`;
-}
-
 export default function RepositoryListClient({ repos }: RepositoryListClientProps) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [scanningRepoId, setScanningRepoId] = useState<number | null>(null);
+  const [scanMessage, setScanMessage] = useState<string | null>(null);
+  const [scanMode, setScanMode] = useState<ScanMode>("quick");
+  const [scanReport, setScanReport] = useState<ScanResponse | null>(null);
 
   const filteredRepos = useMemo(() => {
     const search = query.trim().toLowerCase();
@@ -49,6 +52,69 @@ export default function RepositoryListClient({ repos }: RepositoryListClientProp
   const currentPage = Math.min(page, totalPages);
   const startIndex = (currentPage - 1) * PAGE_SIZE;
   const paginatedRepos = filteredRepos.slice(startIndex, startIndex + PAGE_SIZE);
+
+  async function handleScan(owner: string, repo: string) {
+    const activeRepoId = repos.find(
+      (repository) => repository.owner === owner && repository.name === repo,
+    )?.id;
+
+    if (activeRepoId) {
+      setScanningRepoId(activeRepoId);
+    }
+    setScanMessage(
+      scanMode === "deep"
+        ? `Deep scanning ${owner}/${repo} commit history...`
+        : `Quick scanning ${owner}/${repo}...`,
+    );
+
+    try {
+      const res = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ owner, repo, mode: scanMode }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Scan failed");
+      }
+
+      setScanReport({
+        results: Array.isArray(data.results) ? data.results : [],
+        meta: {
+          mode: data.meta?.mode === "deep" ? "deep" : "quick",
+          scannedFiles: data.meta?.scannedFiles ?? 0,
+          maxFiles: data.meta?.maxFiles,
+          maxCommits: data.meta?.maxCommits,
+          maxFilesPerCommit: data.meta?.maxFilesPerCommit,
+          maxHistoryFiles: data.meta?.maxHistoryFiles,
+          commitsScanned: data.meta?.commitsScanned,
+          skippedLargeFilesOverBytes: data.meta?.skippedLargeFilesOverBytes,
+        },
+      });
+
+      const findingsCount = Array.isArray(data?.results) ? data.results.length : 0;
+      const scannedFiles = data?.meta?.scannedFiles;
+      const commitsScanned = data?.meta?.commitsScanned;
+      if (scanMode === "deep") {
+        setScanMessage(
+          `Deep scan complete for ${owner}/${repo}: ${findingsCount} files flagged across ${scannedFiles ?? 0} scanned files and ${commitsScanned ?? 0} commits.`,
+        );
+      } else {
+        setScanMessage(
+          `Quick scan complete for ${owner}/${repo}: ${findingsCount} files flagged across ${scannedFiles ?? 0} scanned files.`,
+        );
+      }
+      console.log(data.results);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to scan repository";
+      setScanMessage(message);
+    } finally {
+      setScanningRepoId(null);
+    }
+  }
+  
 
   return (
     <section className="space-y-8">
@@ -83,6 +149,50 @@ export default function RepositoryListClient({ repos }: RepositoryListClientProp
         </p>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-xs uppercase tracking-[0.15em] text-white/55">
+          Scan mode
+        </span>
+        <button
+          type="button"
+          onClick={() => setScanMode("quick")}
+          className={`rounded-full border px-3 py-1 text-xs transition ${
+            scanMode === "quick"
+              ? "border-white bg-white text-black"
+              : "border-white/35 text-white/70 hover:border-white"
+          }`}
+        >
+          Quick (HEAD)
+        </button>
+        <button
+          type="button"
+          onClick={() => setScanMode("deep")}
+          className={`rounded-full border px-3 py-1 text-xs transition ${
+            scanMode === "deep"
+              ? "border-white bg-white text-black"
+              : "border-white/35 text-white/70 hover:border-white"
+          }`}
+        >
+          Deep (history)
+        </button>
+        <p className="text-xs text-white/50">
+          Deep mode scans recent commits and takes longer.
+        </p>
+      </div>
+
+      {scanMessage && (
+        <p className="rounded-xl border border-white/20 px-4 py-2 text-sm text-white/70">
+          {scanMessage}
+        </p>
+      )}
+
+      {scanReport && (
+        <ScanResultsDashboard
+          results={scanReport.results}
+          meta={scanReport.meta}
+        />
+      )}
+
       <ul className="grid gap-4 md:grid-cols-2" aria-label="GitHub repository list">
         {paginatedRepos.map((repo) => (
           <li
@@ -101,9 +211,9 @@ export default function RepositoryListClient({ repos }: RepositoryListClientProp
               </span>
             </div>
 
-            <p className="mb-5 min-h-11 text-sm leading-relaxed text-white/60">
+            {/* <p className="mb-5 min-h-11 text-sm leading-relaxed text-white/60">
               {trimDescription(repo.description)}
-            </p>
+            </p> */}
 
             <div className="flex items-center justify-between gap-4">
               <p className="text-xs text-white/50">
@@ -111,9 +221,11 @@ export default function RepositoryListClient({ repos }: RepositoryListClientProp
               </p>
               <button
                 type="button"
-                className="rounded-full border border-white/50 px-4 py-1.5 text-sm text-white transition hover:border-white"
+                className="rounded-full border border-white/50 px-4 py-1.5 text-sm text-white transition hover:border-white disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={scanningRepoId === repo.id}
+                onClick={() => handleScan(repo.owner, repo.name)}
               >
-                Scan
+                {scanningRepoId === repo.id ? "Scanning..." : "Scan"}
               </button>
             </div>
           </li>

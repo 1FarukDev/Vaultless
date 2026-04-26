@@ -5,6 +5,7 @@ import RepositoryListClient from "./repository-list-client";
 
 export type Repo = {
   id: number;
+  owner: string;
   name: string;
   description: string | null;
   language: string | null;
@@ -31,7 +32,15 @@ export default async function RepositoryListSection() {
       affiliation: "owner,collaborator,organization_member",
       per_page: 100,
     });
-    repos = data;
+    repos = data.map((repo) => ({
+      id: repo.id,
+      owner: repo.owner?.login ?? "",
+      name: repo.name,
+      description: repo.description,
+      language: repo.language,
+      private: repo.private,
+      updated_at: repo.updated_at,
+    }));
   } catch {
     return (
       <section className="space-y-4">

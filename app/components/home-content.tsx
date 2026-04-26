@@ -35,6 +35,7 @@ export default function HomeContent({ repositoriesSection }: HomeContentProps) {
   const { data: session, status } = useSession();
   const isAuthenticated = status === "authenticated";
 
+
   return (
     <main className="min-h-screen bg-[#0a0a0a] px-6 py-10 text-white sm:px-10 lg:px-16">
       <div className="mx-auto grid w-full max-w-6xl gap-20">
