@@ -10,7 +10,8 @@ The app is **stateless** from a product perspective (no Vaultless-owned database
 |------|----------------|
 | **Landing** | Minimal black-and-white marketing page with Framer Motion reveals (`app/components/home-content.tsx`). |
 | **GitHub OAuth** | NextAuth GitHub provider; access token stored on the session for API calls (`app/api/auth/[...nextauth]/route.ts`, `types/next-auth.d.ts`). |
-| **Repository list** | Server-rendered list via Octokit when signed in; client search, pagination, quick/deep scan mode toggle (`repository-list-section.tsx`, `repository-list-client.tsx`). |
+| **Wizard UI** | Step-by-step flow: connect → pick repo or **paste a GitHub URL** (`lib/parse-github-repo-url.ts`) → scan → clean (`app/components/vaultless-wizard.tsx`). |
+| **Repository list** | Optional list from `GET /api/repos` / server fetch; filterable grid in the wizard (`repository-list-section.tsx` still available for older layouts). |
 | **Scan** | `POST /api/scan` — **quick** mode: `HEAD` tree + filtered files; **deep** mode: recent commits and changed files. Pattern-based detection in `lib/helpers/scan.ts` with path filtering in `lib/helpers/skip.ts`. |
 | **Results UI** | Dashboard with summary stats, per-file findings, redacted previews (`lib/redact-preview.ts`), and actions (`app/components/scan-results-dashboard.tsx`). |
 | **Clean / PR** | `POST /api/clean` — creates branch from **`main`**, rewrites flagged lines via `lib/helpers/clean.ts`, commits, opens a PR. Can run for all findings or a single file from the dashboard. |
