@@ -2,7 +2,7 @@ import chalk from "chalk"
 import ora from "ora"
 import { glob } from "glob"
 import { readFileSync, writeFileSync } from "fs"
-import { scanContent, cleanContent, shouldSkip, isLikelyScannable } from "@vaultless/scanner"
+import { scanContent, cleanContent, shouldSkip, isLikelyScannable } from "../scanner"
 
 export async function cleanCommand(options: { pr?: boolean; direct?: boolean }) {
   console.log(chalk.green("\n  Vaultless — Secret Cleaner\n"))

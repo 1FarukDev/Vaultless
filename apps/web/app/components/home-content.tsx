@@ -9,7 +9,6 @@ import { GITHUB_OAUTH_SCOPE } from "@/lib/github-oauth-scope";
 
 const ACCENT = "#00FF85";
 const INSTALL_CMD = "npm install -g vaultless";
-/** Published scope may differ; npm page documents install. */
 const CLI_PACKAGE_URL = "https://www.npmjs.com/package/vaultless";
 
 const reveal: Variants = {

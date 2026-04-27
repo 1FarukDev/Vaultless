@@ -2,7 +2,7 @@ import chalk from "chalk"
 import ora from "ora"
 import { glob } from "glob"
 import { readFileSync } from "fs"
-import { scanContent, shouldSkip, isLikelyScannable } from "@vaultless/scanner"
+import { scanContent, shouldSkip, isLikelyScannable } from "../scanner"
 
 export async function scanCommand(options: { deep?: boolean }) {
   console.log(chalk.green("\n  Vaultless — Secret Scanner\n"))
